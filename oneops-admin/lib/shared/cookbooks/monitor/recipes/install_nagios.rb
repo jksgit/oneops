@@ -36,6 +36,10 @@ when "redhat","centos","fedora","suse"
     package "nagios-plugins-http" do
       not_if "rpm -qa | egrep -qe 'nagios-plugins-http-[0-9]+'"
     end
+        execute 'Nagios Init' do
+         command "sudo sed -i '/kill $2 $NagiosPID/d' /etc/init.d/nagios"
+         command "sudo sed -i '74i kill $2 $NagiosPID;sleep 2;if pgrep -u nagios > /dev/null; then killall -9 -u nagios;fi' /etc/init.d/nagios"
+        end
   end
 
   execute "cp /usr/lib64/nagios/plugins/check_load /opt/nagios/libexec/" do
@@ -97,8 +101,8 @@ when "windows"
     # un tar it in /cygdrive/c/cygwin64/opt/nagios/
     execute "tar xzf /cygdrive/c/cygwin64/#{file_name} -C /cygdrive/c/cygwin64/opt"
     execute "chmod +x /opt/nagios/bin/*"
-	
-    #Install service for windows  
+
+    #Install service for windows
     powershell_script 'Install nagios service' do
       code "C:/Cygwin64/bin/cygrunsrv.exe -I nagios -d Nagios -p /opt/nagios/bin/nagios.exe -a /etc/nagios/nagios.cfg"
       not_if {::Win32::Service.exists?("nagios")}
@@ -132,7 +136,7 @@ if node.platform =~ /windows/
   dir_prefix = 'c:/cygwin64'
   root_user = 'oneops'
   root_group = 'Administrators'
-  
+
   #configure directory permissions Windows way, plus make sure child folders will inherit rights from parents
   ['/var/lib/nagios3','/var/log/nagios3'].each do |dir_name1|
     directory dir_name1 do
@@ -149,7 +153,7 @@ if node.platform =~ /windows/
 	content "c:/opt /opt"
 	only_if{File.directory?("C:/tools/DevKit2/etc")}
   end
-  
+
   #Adding check_load for windows - in linux it's coming from nagios plugin, but for windows we write a simple bash script, that currently only returns 0s
   cookbook_file "/opt/nagios/libexec/check_load" do
     cookbook 'monitor'
